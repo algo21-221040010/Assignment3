@@ -1,6 +1,6 @@
 # Assignment 3
 ## Brief Introduction
-This is the repository for assignment 2, which follows the work of a research paper by ***Kaiyuan securities***. More information about this research paper can be found at 'research_paper' folder.
+This is the repository for assignment 3, which follows the work of a research paper by ***Kaiyuan securities***. More information about this research paper can be found at 'research_paper' folder.
 
 ## What is Included
 There are 3 folders in this repository
