@@ -90,23 +90,33 @@ def get_trading_sig_V1(data_factor,factor='factor_pv',s=1.10):
     return data_factor
 
 
-def get_trading_sig_M(data_factor,s1=10,s_1=-0,s2=0.03,s_2=-0.02):
-    """计算买卖信号
+def classify_market(data,factor='fq_close'):
+    '''
+    划分多空头市场
+    当 5 日均线高于 90 日均线，市场划分为多头市场；当 5 日均线小于 90 日均线，市场划分为空头市场。
+    '''
+    data['MA5'] = data[factor].rolling(5).mean()
+    data['MA90'] = data[factor].rolling(90).mean()
+    data.dropna(inplace=True)
+    print('1111',data)
+    data['market'] = data.apply(lambda x:1 if x['MA5']>=x['MA90'] else -1, axis=1)
+    return data
 
-    Args:
-        data_factor (dateframe): 因子数据（字段['factor']）
-        s1 (int, optional): 因子阈值. Defaults to 10.
-        s_1 (int, optional): 因子阈值. Defaults to -0.
-        s2 (float, optional): 因子阈值. Defaults to 0.03.
-        s_2 (float, optional): 因子阈值. Defaults to -0.02.
-
-    Returns:
-        dateframe: 信号数据（字段['factor','sig']）
-    """
-    # 买入信号=1，卖出信号=-1
-    data_factor['sig'] = data_factor.apply(lambda x:1 if (x['factor']>s1 and x['inflow_tense']>s2)
-                                        else(-1 if (x['factor']<s_1 and x['inflow_tense']<s_2) else 0), axis=1)
-    
+def get_trading_sig_V2(data_factor, factor='factor',s1=1.125,s2=1.275):
+    '''
+    当前为多头市场下，若价量共振指标大于 Threshold1 则做多，否则以 Threshold1 平仓。
+    当前为空头市场下，若价量共振指标大于 Threshold2 则做多，否则以 Threshold2 平仓
+    '''
+    # 辨别多空市场
+    data_factor = classify_market(data_factor,factor='fq_close')
+    print('11',data)
+    # 价量共振指标大于 s ，买进。否则，卖出。
+    #data_factor['pre_'+factor] = data_factor[factor].shift(1).fillna(0)
+    data_factor['sig'] = data_factor.apply(lambda x:1 if ((x[factor]>s1 and x['market']==1) or (x[factor]>s2 and x['market']==-1))
+        else(-1 if ((x[factor]<=s1 and x['market']==1) or (x[factor]<=s2 and x['market']==-1))  
+        else 0), axis=1)
+    #data_factor.drop(['pre_'+factor], axis=1, inplace=True)
+    data_factor = adjust_trading_sig(data_factor)
     return data_factor
 
 
@@ -115,7 +125,10 @@ if __name__ == '__main__':
     start_dt = 20170101
     end_dt = 20210617
     future_code = 'IC'
-    s1 = 60; s_1 = -40 # 策略 阈值
+    # 定义策略中需要用到的参数--> 只用AMA平均线时的最优参数-IC:3,5,1.1; IF:3,11,1--7.11; 5,11,1--7.01
+    shortLen, longLen, L, N = 5, 100, 50, 3  # 研报默认: 5, 100, 50, 3
+    s = 1.15   # 阈值                    # 研报默认: 1.15
+
 
     allocation = 10000000 # 策略初始资金一千万
 
@@ -125,11 +138,18 @@ if __name__ == '__main__':
     future_data = d.get_refactor_option_data()
     
     # 获取 因子数据
-    data_factor = get_factor(data, future_data)
-    print(data_factor)
-    
-    # 获取 买卖信号数据
-    data_sig = get_trading_sig(data_factor, s1,s_1)
+    # 生成 指标
+    data = calc_pvResonance_V1(future_data,calc_p='fq_close',calc_v='all_volume',
+                    shortLen=shortLen,longLen=longLen,L=L,N=N)
+    #draw_factor(data,shortLen,longLen, factor='ratio')#ratio')
+    #data_factor = get_macd(data_fuquan, fast,slow,n ) #.reset_index()
+
+    ### 获取买卖信号
+    data_factor = data.reset_index()
+    data_sig = get_trading_sig_V1(data_factor,'factor_pv')
+    data_sig.rename(columns={'factor_pv':'factor'},inplace=True)
+
+
     # data_sig = get_trading_sig_M(data_factor)
     print(data_sig)
     draw_trade_sig(data_sig, time_freq=240, startdt=20120000, enddt=20220000)
