@@ -7,9 +7,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from data_handle import *
-from signal_handle import *
-
+from signal_handle import adjust_trading_sig
 
 def calc_AMA(data, n, calc='r_close',fastlen=2, slowlen=30):
     '''
@@ -121,6 +119,9 @@ def get_trading_sig_V2(data_factor, factor='factor',s1=1.125,s2=1.275):
 
 
 if __name__ == '__main__':    
+    from data_handle import *
+    from signal_handle import *
+
     # 定义策略中需要用到的参数
     start_dt = 20170101
     end_dt = 20210617
