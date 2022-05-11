@@ -13,4 +13,5 @@ There are 3 folders in this repository
 - 3. **'data'** folder contains:
     - input data.
     - result pictures such as picture of trading signal(see below).
+
     ![trading signal](data\trading_signal.png)
