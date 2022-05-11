@@ -32,7 +32,6 @@ class GetData():
             self.future_data = transfer_timeFreq(self.future_data, self.time_frequency, ic_multiplier=200)
         elif self.time_frequency == 240:
             self.future_data = pd.read_csv(f'data\{self.future}_info.csv', header=0, index_col=0)
-            pass # self.future_data = self.factor_data
         
 
     def get_index_data(self):
@@ -76,7 +75,6 @@ class GetData():
             self.data = self.future_data
         # 复权
         col_list = ['high','low','open','close']
-        print(self.data.columns)
         for i in col_list:
             self.data['r_'+ i] = np.multiply(self.data[i], self.data['factor'])
         return self.data

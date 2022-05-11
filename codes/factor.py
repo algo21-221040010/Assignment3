@@ -11,7 +11,7 @@ from data_handle import *
 from signal_handle import *
 
 
-def calc_AMA(data, n, calc='fq_close',fastlen=2, slowlen=30):
+def calc_AMA(data, n, calc='r_close',fastlen=2, slowlen=30):
     '''
     Function
         计算AMA（卡夫曼自适应移动平均）
@@ -39,6 +39,7 @@ def calc_AMA(data, n, calc='fq_close',fastlen=2, slowlen=30):
     slow = 2/(slowlen + 1)
     data['c'] = np.square((fast - slow)*data['ER']+slow)
     data.dropna(axis=0,inplace=True)
+
     # 计算 AMA： AMA = AMA[1] + c*(price –AMA[1])
     ama_list = []
     ama_list.append(data[calc].iloc[0])
@@ -50,15 +51,15 @@ def calc_AMA(data, n, calc='fq_close',fastlen=2, slowlen=30):
     return data
 
 
-def calc_BMA(data, L, calc='fq_close'):
+def calc_BMA(data, L, calc='r_close'):
     data['BMA']= data[calc].rolling(L).mean()
     return data
 
 
-def calc_pvResonance_V1(data,calc_p='fq_close',calc_v='all_volume', shortLen=5, longLen=100, L=50, N=3):
+def calc_pvResonance_V1(data,calc_p='r_close',calc_v='volume', shortLen=5, longLen=100, L=50, N=3):
     # 对 量
     data = calc_AMA(data, shortLen, calc=calc_v)
-    data = calc_AMA(data, longLen, calc =calc_v)
+    data = calc_AMA(data, longLen , calc=calc_v)
     data['v'] = data['AMA'+str(shortLen)] / data['AMA'+str(longLen)]
     # 对 价
     data = calc_BMA(data, L, calc=calc_p)
@@ -90,7 +91,7 @@ def get_trading_sig_V1(data_factor,factor='factor_pv',s=1.10):
     return data_factor
 
 
-def classify_market(data,factor='fq_close'):
+def classify_market(data,factor='r_close'):
     '''
     划分多空头市场
     当 5 日均线高于 90 日均线，市场划分为多头市场；当 5 日均线小于 90 日均线，市场划分为空头市场。
@@ -108,8 +109,7 @@ def get_trading_sig_V2(data_factor, factor='factor',s1=1.125,s2=1.275):
     当前为空头市场下，若价量共振指标大于 Threshold2 则做多，否则以 Threshold2 平仓
     '''
     # 辨别多空市场
-    data_factor = classify_market(data_factor,factor='fq_close')
-    print('11',data)
+    data_factor = classify_market(data_factor,factor='r_close')
     # 价量共振指标大于 s ，买进。否则，卖出。
     #data_factor['pre_'+factor] = data_factor[factor].shift(1).fillna(0)
     data_factor['sig'] = data_factor.apply(lambda x:1 if ((x[factor]>s1 and x['market']==1) or (x[factor]>s2 and x['market']==-1))
@@ -136,20 +136,17 @@ if __name__ == '__main__':
     # 获取 复权数据
     d = GetData(future_code, time_frequency=240)
     future_data = d.get_refactor_option_data()
+    print(future_data)
     
     # 获取 因子数据
     # 生成 指标
-    data = calc_pvResonance_V1(future_data,calc_p='fq_close',calc_v='all_volume',
+    data = calc_pvResonance_V1(future_data,calc_p='r_close',calc_v='volume',
                     shortLen=shortLen,longLen=longLen,L=L,N=N)
-    #draw_factor(data,shortLen,longLen, factor='ratio')#ratio')
-    #data_factor = get_macd(data_fuquan, fast,slow,n ) #.reset_index()
 
     ### 获取买卖信号
     data_factor = data.reset_index()
     data_sig = get_trading_sig_V1(data_factor,'factor_pv')
     data_sig.rename(columns={'factor_pv':'factor'},inplace=True)
 
-
-    # data_sig = get_trading_sig_M(data_factor)
     print(data_sig)
-    draw_trade_sig(data_sig, time_freq=240, startdt=20120000, enddt=20220000)
+    draw_trade_sig(data_sig, time_freq=240, startdt=start_dt, enddt=end_dt)
